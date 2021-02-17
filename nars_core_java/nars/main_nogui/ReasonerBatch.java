@@ -1,34 +1,11 @@
-/* 
- * The MIT License
- *
- * Copyright 2019 The OpenNARS authors.
- *
- * Permission is hereby granted, free of charge, to any person obtaining a copy
- * of this software and associated documentation files (the "Software"), to deal
- * in the Software without restriction, including without limitation the rights
- * to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
- * copies of the Software, and to permit persons to whom the Software is
- * furnished to do so, subject to the following conditions:
- *
- * The above copyright notice and this permission notice shall be included in
- * all copies or substantial portions of the Software.
- *
- * THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
- * IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
- * FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
- * AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
- * LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
- * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
- * THE SOFTWARE.
- */
 package nars.main_nogui;
 
 import java.util.ArrayList;
 import java.util.concurrent.atomic.AtomicInteger;
-
 import nars.entity.Stamp;
 import nars.entity.Task;
 import nars.gui.MainWindow;
+import nars.io.Distribution;
 import nars.io.InputChannel;
 import nars.io.OutputChannel;
 import nars.io.StringParser;
@@ -80,11 +57,18 @@ public class ReasonerBatch {
      */
     private long timer;
     private AtomicInteger silenceValue = new AtomicInteger(Parameters.SILENT_LEVEL);
+    
+    protected Distribution distribution;
 
     public ReasonerBatch() {
         memory = new Memory(this);
         inputChannels = new ArrayList<>();
         outputChannels = new ArrayList<>();
+        distribution = new Distribution(this, memory);
+    }
+    
+    public Distribution getDistribution(){
+        return distribution;
     }
 
     /**
@@ -92,9 +76,11 @@ public class ReasonerBatch {
      * from {@link MainWindow}.
      */
     public void reset() {
+        //CompositionalRules.rand = new Random(1);
         running = false;
         walkingSteps = 0;
         clock = 0;
+        distribution.init();
         memory.init();
         Stamp.init();
 //	    timer = 0;
@@ -174,6 +160,7 @@ public class ReasonerBatch {
         if (walkingSteps == 0) {
             boolean reasonerShouldRun = false;
             for (InputChannel channelIn : inputChannels) {
+                boolean rnext = channelIn.nextInput();
                 reasonerShouldRun = reasonerShouldRun
                         || channelIn.nextInput();
             }
@@ -187,9 +174,11 @@ public class ReasonerBatch {
             }
             output.clear();	// this will trigger display the current value of timer in Memory.report()
         }
+        
         if (running || walkingSteps > 0) {
             clock++;
             tickTimer();
+            distribution.distributeWorkCycle();  
             memory.workCycle(clock);
             if (walkingSteps > 0) {
                 walkingSteps--;
@@ -225,7 +214,7 @@ public class ReasonerBatch {
             } catch (NumberFormatException e) {
                 Task task = StringParser.parseExperience(new StringBuffer(text), memory, clock);
                 if (task != null) {
-                    memory.inputTask(task);
+                    distribution.inputNarseseTask(task);
                 }
             }
         }

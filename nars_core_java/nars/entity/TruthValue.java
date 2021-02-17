@@ -148,6 +148,10 @@ public class TruthValue implements Cloneable { // implements Cloneable {
     public boolean isNegative() {
         return getFrequency() < 0.5;
     }
+    
+    public float getIgnornce(){
+        return (float) (1.0 - confidence.getValue());
+    }
 
     /**
      * Compare two truth values

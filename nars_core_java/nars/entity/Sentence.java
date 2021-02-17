@@ -107,6 +107,14 @@ public class Sentence implements Cloneable {
         }
         return false;
     }
+    
+    public int getTemporalOrder(){
+        return content.getTemporalOrder();
+    }
+    
+    public long getOccurrenceTime(){
+        return stamp.getOccurrenceTime();
+    }
 
     /**
      * To produce the hashcode of a sentence

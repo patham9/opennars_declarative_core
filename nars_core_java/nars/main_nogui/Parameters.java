@@ -97,4 +97,19 @@ public class Parameters {
     public static final int MAXIMUM_BELIEF_LENGTH = 7;
     /** Maximum number of goals kept in a Concept */
     public static final int MAXIMUM_QUESTIONS_LENGTH = 5;
+    
+        /* ----------------------Buffer---------------------*/
+    /**
+     * Duration for internal buffer
+     * Cycles per duration
+     * Past/future tense usage convention
+     * How far away "past" and "future" is from "now" in cycles
+     * The range of now is [-Duration/2, Duration/2]
+     **/
+    public static final int DURATION_FOR_INTERNAL_BUFFER = 5;
+    
+    /**
+     * This value multiplied with DURATION gives the time a buffer element can stay in a buffer 
+     */
+     public static final int MAX_BUFFER_DURATION_FACTOR = 2;
 }

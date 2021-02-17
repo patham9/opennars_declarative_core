@@ -32,6 +32,12 @@ public class Symbols {
     public static final char JUDGMENT_MARK = '.';
     public static final char QUESTION_MARK = '?';
 
+    /* Tense markers */
+    public static final String TENSE_MARK = ":";
+    public static final String TENSE_PAST = ":\\:";
+    public static final String TENSE_PRESENT = ":|:";
+    public static final String TENSE_FUTURE = ":/:";
+    
     /* variable type */
     public static final char VAR_INDEPENDENT = '$';
     public static final char VAR_DEPENDENT = '#';

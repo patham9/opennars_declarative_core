@@ -23,6 +23,8 @@
  */
 package nars.language;
 
+import nars.inference.TemporalRules;
+
 /**
  * Term is the basic component of Narsese, and the object of processing in NARS.
  * <p>
@@ -109,6 +111,14 @@ public class Term implements Cloneable, Comparable<Term> {
     public void renameVariables() {
     }
 
+    public int getTemporalOrder(){
+        return TemporalRules.ORDER_NONE;
+    }
+    
+    public int containedTemporalRelations(){
+        return 0;
+    }
+    
     /**
      * The syntactic complexity, for constant atomic Term, is 1.
      *

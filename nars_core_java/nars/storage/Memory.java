@@ -59,7 +59,7 @@ public class Memory {
     /**
      * New tasks with novel composed terms, for delayed and selective processing
      */
-    private final NovelTaskBag novelTasks;
+    //private final NovelTaskBag novelTasks;
     /**
      * Inference record text to be written into a log file
      */
@@ -73,7 +73,7 @@ public class Memory {
      * List of new tasks accumulated in one cycle, to be processed in the next
      * cycle
      */
-    private final LinkedList<Task> newTasks;
+    //private final LinkedList<Task> newTasks;
     /**
      * List of Strings or Tasks to be sent to the output channels
      */
@@ -124,15 +124,11 @@ public class Memory {
         this.reasoner = reasoner;
         recorder = new NullInferenceRecorder();
         concepts = new ConceptBag(this);
-        novelTasks = new NovelTaskBag(this);
-        newTasks = new LinkedList<>();
         exportStrings = new ArrayList<>();
     }
 
     public void init() {
         concepts.init();
-        novelTasks.init();
-        newTasks.clear();
         exportStrings.clear();
         reasoner.initTimer();
         randomNumber = new Random(1);
@@ -163,7 +159,7 @@ public class Memory {
      * Actually means that there are no new Tasks
      */
     public boolean noResult() {
-        return newTasks.isEmpty();
+        return reasoner.getDistribution().getOverallBuffer().isEmpty();
     }
 
     /* ---------- conversion utilities ---------- */
@@ -250,28 +246,6 @@ public class Memory {
         concepts.putBack(c);
     }
 
-    /* ---------- new task entries ---------- */
-
-    /* There are several types of new tasks, all added into the
-     newTasks list, to be processed in the next workCycle.
-     Some of them are reported and/or logged. */
-    /**
-     * Input task processing. Invoked by the outside or inside environment.
-     * Outside: StringParser (input); Inside: Operator (feedback). Input tasks
-     * with low priority are ignored, and the others are put into task buffer.
-     *
-     * @param task The input task
-     */
-    public void inputTask(Task task) {
-        if (task.getBudget().aboveThreshold()) {
-            recorder.append("!!! Perceived: " + task + "\n");
-            report(task.getSentence(), true);    // report input
-            newTasks.add(task);       // wait to be processed in the next workCycle
-        } else {
-            recorder.append("!!! Neglected: " + task + "\n");
-        }
-    }
-
     /**
      * Activated task called in MatchingRules.trySolution and
      * Concept.processGoal
@@ -292,7 +266,7 @@ public class Memory {
                 report(task.getSentence(), false);
             }
         }
-        newTasks.add(task);
+        reasoner.getDistribution().getInternalBuffer().putIn(task);
     }
 
     /**
@@ -309,7 +283,7 @@ public class Memory {
             if (budget > minSilent) {  // only report significant derived Tasks
                 report(task.getSentence(), false);
             }
-            newTasks.add(task);
+            reasoner.getDistribution().getInternalBuffer().putIn(task);
         } else {
             recorder.append("!!! Ignored: " + task + "\n");
         }
@@ -396,49 +370,30 @@ public class Memory {
      */
     public void workCycle(long clock) {
         recorder.append(" --- " + clock + " ---\n");
-        processNewTask();
-        if (noResult()) {       // necessary?
-            processNovelTask();
-        }
-        if (noResult()) {       // necessary?
-            processConcept();
-        }
-        novelTasks.refresh();
+        processBuffer();
+        processConcept();       
+        reasoner.getDistribution().getOverallBuffer().refresh();
     }
 
-    /**
-     * Process the newTasks accumulated in the previous workCycle, accept input
-     * ones and those that corresponding to existing concepts, plus one from the
-     * buffer.
-     */
-    private void processNewTask() {
+    private void processBuffer(){
         Task task;
-        int counter = newTasks.size();  // don't include new tasks produced in the current workCycle
+        int counter = reasoner.getDistribution().getOverallBuffer().size();  // don't include new tasks produced in the current workCycle
         while (counter-- > 0) {
-            task = newTasks.removeFirst();
+            task = reasoner.getDistribution().getOverallBuffer().takeOut();
             if (task.isInput() || (termToConcept(task.getContent()) != null)) { // new input or existing concept
                 immediateProcess(task);
             } else {
+                immediateProcess(task);
                 Sentence s = task.getSentence();
                 if (s.isJudgment()) {
                     double d = s.getTruth().getExpectation();
                     if (d > Parameters.DEFAULT_CREATION_EXPECTATION) {
-                        novelTasks.putIn(task);    // new concept formation
+                        reasoner.getDistribution().getInternalBuffer().putIn(task);    // new concept formation
                     } else {
                         recorder.append("!!! Neglected: " + task + "\n");
                     }
                 }
             }
-        }
-    }
-
-    /**
-     * Select a novel task to process.
-     */
-    private void processNovelTask() {
-        Task task = novelTasks.takeOut();       // select a task from novelTasks
-        if (task != null) {
-            immediateProcess(task);
         }
     }
 
@@ -500,8 +455,8 @@ public class Memory {
      * @param s the window title
      */
 	public void taskBuffersStartPlay( BagObserver<Task> bagObserver, String s ) {
-        bagObserver.setBag(novelTasks);
-        novelTasks.addBagObserver(bagObserver, s);
+        bagObserver.setBag(reasoner.getDistribution().getInternalBuffer());
+        reasoner.getDistribution().getInternalBuffer().addBagObserver(bagObserver, s);
     }
 
     /**
@@ -542,8 +497,6 @@ public class Memory {
     @Override
     public String toString() {
         return toStringLongIfNotNull(concepts, "concepts")
-                + toStringLongIfNotNull(novelTasks, "novelTasks")
-                + toStringIfNotNull(newTasks, "newTasks")
                 + toStringLongIfNotNull(currentTask, "currentTask")
                 + toStringLongIfNotNull(currentBeliefLink, "currentBeliefLink")
                 + toStringIfNotNull(currentBelief, "currentBelief");

@@ -24,8 +24,14 @@
 package nars.entity;
 
 import java.util.*;
+import nars.inference.TemporalRules;
+import static nars.inference.TemporalRules.ORDER_BACKWARD;
+import static nars.inference.TemporalRules.ORDER_CONCURRENT;
+import static nars.inference.TemporalRules.ORDER_FORWARD;
 
 import nars.io.Symbols;
+import nars.language.Tense;
+import nars.main_nogui.Debug;
 import nars.main_nogui.Parameters;
 import nars.main_nogui.ReasonerBatch;
 
@@ -48,7 +54,62 @@ public class Stamp implements Cloneable {
     private int baseLength;
     /** creation time of the stamp */
     private long creationTime;
+    
+    private long putInTime;
 
+    private Tense tense;
+    
+    private long occurrenceTime;
+    
+    // default for a temporal events means "always" in Judgment/Question, but 
+    // "current" in Goal/Quest
+    public static final long ETERNAL = Integer.MIN_VALUE;
+    
+    public boolean before(final Stamp s, final int duration){
+        if(isEternal() || s.isEternal())
+            return false;
+        
+        return order(s.occurrenceTime, occurrenceTime, duration) == TemporalRules.ORDER_BACKWARD;
+    }
+    
+    public boolean after(final Stamp s, final int duration){
+        if(isEternal() || s.isEternal())
+            return false;
+        return order(s.occurrenceTime, occurrenceTime, duration) == TemporalRules.ORDER_FORWARD;
+    }
+    
+    public boolean isEternal(){
+        final boolean eternalOccurrence = occurrenceTime == ETERNAL;
+        
+        if(Debug.DETAILED){
+            if (eternalOccurrence && tense != Tense.Eternal)
+                throw new IllegalStateException("Stamp has inconsistent tense and eternal ocurrenceTime: tense=" + tense);
+        }
+        
+        return eternalOccurrence;
+    }
+    
+    public long getOccurrenceTime(){
+        return occurrenceTime;
+    }
+    
+    public static int order(final long timeDiff, final int durationCycles){
+        final int halfDuration = durationCycles/2;
+        if(timeDiff > halfDuration)
+            return ORDER_FORWARD;
+        else if(timeDiff < -halfDuration)
+            return ORDER_BACKWARD;
+        else
+            return ORDER_CONCURRENT;
+    }
+    
+    public static int order(final long a, final long b, final int durationCycles){
+        if((a == Stamp.ETERNAL) || (b == Stamp.ETERNAL))
+            throw new IllegalStateException("order() does not compare ETERNAL times");
+        
+        return order(b - a, durationCycles);
+    }
+    
     /**
      * Generate a new stamp, with a new serial number, for a new Task
      * @param time Creation time of the stamp
@@ -82,6 +143,15 @@ public class Stamp implements Cloneable {
         baseLength = old.length();
         evidentialBase = old.getBase();
         creationTime = time;
+    }
+    
+    public Stamp(long time, Tense tense){
+        currentSerial++;
+        baseLength = 1;
+        evidentialBase = new long[baseLength];
+        evidentialBase[0] = currentSerial;
+        this.tense = tense;
+        //setCreationTime(time, Parameters.DURATION_FOR_INTERNAL_BUFFER)
     }
 
     /**
@@ -238,5 +308,13 @@ public class Stamp implements Cloneable {
             }
         }
         return buffer.toString();
+    }
+    
+    public long getPutInTime(){
+        return putInTime;
+    }
+    
+    public void setPutInTime(long time){
+        putInTime = time;
     }
 }

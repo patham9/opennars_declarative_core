@@ -97,12 +97,13 @@ public abstract class StringParser extends Symbols {
         StringBuffer buffer = new StringBuffer(s);
         Task task = null;
         try {
+            final Tense tense = parseTense(buffer);
             String budgetString = getBudgetString(buffer);
             String truthString = getTruthString(buffer);
             String str = buffer.toString().trim();
             int last = str.length() - 1;
             char punc = str.charAt(last);
-            Stamp stamp = new Stamp(time);
+            Stamp stamp = new Stamp(time, tense);
             TruthValue truth = parseTruth(truthString, punc);
             Term content = parseTerm(str.substring(0, last), memory);
             Sentence sentence = new Sentence(content, punc, truth, stamp);
@@ -490,5 +491,17 @@ public abstract class StringParser extends Symbols {
             return false;
         }
         return true;
+    }
+    
+    public static Tense parseTense(StringBuffer s){
+        final int i = s.indexOf(Symbols.TENSE_MARK);
+        String t = "";
+        if(i > 0){
+            t = s.substring(i).trim();
+            s.delete(i, s.length());
+        }
+        
+        return Tense.tense(t);
+                
     }
 }
